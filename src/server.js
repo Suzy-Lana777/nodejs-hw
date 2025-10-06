@@ -1,15 +1,13 @@
 // src/server.js
-
 import express from 'express';
 import cors from 'cors';
 import pino from 'pino-http';
 import 'dotenv/config';
 
 const app = express();
-const PORT = process.env.PORT ?? 3000;
+const PORT = process.env.PORT ?? 3030;
 
-// Middleware для парсингу JSON
-// Middleware
+// core middleware
 app.use(express.json());
 app.use(cors());
 app.use(
@@ -29,46 +27,35 @@ app.use(
   }),
 );
 
-app.post('/users', (req, res) => {
-  console.log(req.body); // тепер тіло доступне як JS-об’єкт
-  res.status(201).json({ message: 'User created' });
-});
-
-// Логування часу
-app.use((req, res, next) => {
-  console.log(`Time: ${new Date().toLocaleString()}`);
-  next();
-});
-
-// Кореневий маршрут
-app.get('/', (req, res) => {
-  res.status(200).json({ message: 'Hello, World!' });
-});
-
-// Маршрут для тестування middleware помилки
-app.get('/test-error', (req, res) => {
-  // Штучна помилка для прикладу
+// тестова помилка
+app.get('/test-error', () => {
   throw new Error('Something went wrong');
 });
 
-// Middleware 404 (після всіх маршрутів)
-app.use((req, res) => {
+// всі нотатки
+app.get('/notes', (req, res) => {
+  res.status(200).json({ message: 'Retrieved all notes' });
+});
+
+// нотатка за id
+app.get('/notes/:noteId', (req, res) => {
+  const { noteId } = req.params;
+  res.status(200).json({ message: `Retrieved note with ID: ${noteId}` });
+});
+
+// 404
+app.use((_req, res) => {
   res.status(404).json({ message: 'Route not found' });
 });
 
-// Middleware для обробки помилок
+// 500 middleware
 app.use((err, req, res, next) => {
-  console.error(err);
-
-  const isProd = process.env.NODE_ENV === 'production';
-
+  console.log('Error Middleware:', err.message);
   res.status(500).json({
-    message: isProd
-      ? 'Something went wrong. Please try again later.'
-      : err.message,
+    error: err.message,
   });
 });
 
 app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+  console.log(`🚀 Server is running at http://localhost:${PORT}`);
 });
