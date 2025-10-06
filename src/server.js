@@ -43,8 +43,12 @@ app.get('/notes/:noteId', (req, res) => {
   res.status(200).json({ message: `Retrieved note with ID: ${noteId}` });
 });
 
+app.get('/', (req, res) => {
+  res.status(200).json({ message: 'API is up' });
+});
+
 // 404
-app.use((_req, res) => {
+app.use((req, res) => {
   res.status(404).json({ message: 'Route not found' });
 });
 

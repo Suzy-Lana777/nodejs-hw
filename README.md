@@ -3,7 +3,7 @@
 [01-express](https://github.com/Suzy-Lana777/nodejs-hw/tree/01-express)
 
 Деплой на Render
-[https://<твоє-ім’я-сервісу>.onrender.com](https://<твоє-ім’я-сервісу>.onrender.com)
+[https://nodejs-hw-3ft4.onrender.com/]
 
 ## 📝 Маршрути
 
