@@ -3,6 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import pino from 'pino-http';
 import 'dotenv/config';
+import helmet from 'helmet';
 
 const app = express();
 const PORT = process.env.PORT ?? 3030;
@@ -10,6 +11,7 @@ const PORT = process.env.PORT ?? 3030;
 // core middleware
 app.use(express.json());
 app.use(cors());
+app.use(helmet());
 app.use(
   pino({
     level: 'info',
