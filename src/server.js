@@ -4,6 +4,7 @@ import cors from 'cors';
 import pino from 'pino-http';
 import 'dotenv/config';
 import helmet from 'helmet';
+import { connectMongoDB } from './db/connectMongoDB.js';
 
 const app = express();
 const PORT = process.env.PORT ?? 3030;
@@ -61,6 +62,9 @@ app.use((err, req, res, next) => {
     error: err.message,
   });
 });
+
+// підключення до MongoDB
+await connectMongoDB();
 
 app.listen(PORT, () => {
   console.log(`🚀 Server is running at http://localhost:${PORT}`);
