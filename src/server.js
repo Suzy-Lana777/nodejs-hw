@@ -1,69 +1,34 @@
 // src/server.js
+
+// src/server.js
 import express from 'express';
 import cors from 'cors';
-import pino from 'pino-http';
-import 'dotenv/config';
 import helmet from 'helmet';
+import 'dotenv/config';
+
 import { connectMongoDB } from './db/connectMongoDB.js';
+import { logger } from './middleware/logger.js';
+import { notFoundHandler } from './middleware/notFoundHandler.js';
+import { errorHandler } from './middleware/errorHandler.js';
+import notesRoutes from './routes/notesRoutes.js'; // ⬅️ додали
 
 const app = express();
 const PORT = process.env.PORT ?? 3030;
 
 // core middleware
+app.use(logger);
 app.use(express.json());
 app.use(cors());
 app.use(helmet());
-app.use(
-  pino({
-    level: 'info',
-    transport: {
-      target: 'pino-pretty',
-      options: {
-        colorize: true,
-        translateTime: 'HH:MM:ss',
-        ignore: 'pid,hostname',
-        messageFormat:
-          '{req.method} {req.url} {res.statusCode} - {responseTime}ms',
-        hideObject: true,
-      },
-    },
-  }),
-);
 
-// тестова помилка
-app.get('/test-error', () => {
-  throw new Error('Something went wrong');
-});
+// підключаємо маршрути нотаток
+app.use(notesRoutes);
 
-// всі нотатки
-app.get('/notes', (req, res) => {
-  res.status(200).json({ message: 'Retrieved all notes' });
-});
+// 404 і 500
+app.use(notFoundHandler);
+app.use(errorHandler);
 
-// нотатка за id
-app.get('/notes/:noteId', (req, res) => {
-  const { noteId } = req.params;
-  res.status(200).json({ message: `Retrieved note with ID: ${noteId}` });
-});
-
-app.get('/', (req, res) => {
-  res.status(200).json({ message: 'API is up' });
-});
-
-// 404
-app.use((req, res) => {
-  res.status(404).json({ message: 'Route not found' });
-});
-
-// 500 middleware
-app.use((err, req, res, next) => {
-  console.log('Error Middleware:', err.message);
-  res.status(500).json({
-    error: err.message,
-  });
-});
-
-// підключення до MongoDB
+// підключення до MongoDB і старт
 await connectMongoDB();
 
 app.listen(PORT, () => {
