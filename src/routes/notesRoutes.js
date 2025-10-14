@@ -3,6 +3,7 @@
 import { Router } from 'express';
 import {
   getAllNotes,
+  getNoteById,
   createNote,
   updateNote,
   deleteNote,
