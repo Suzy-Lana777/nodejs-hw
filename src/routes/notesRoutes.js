@@ -1,21 +1,19 @@
 // src/routes/notesRoutes.js
+
 import { Router } from 'express';
-import { Note } from '../models/note.js';
+import {
+  getAllNotes,
+  createNote,
+  updateNote,
+  deleteNote,
+} from '../controllers/notesController.js';
 
 const router = Router();
 
-router.get('/notes', async (req, res) => {
-  const notes = await Note.find();
-  res.status(200).json(notes);
-});
-
-router.get('/notes/:noteId', async (req, res) => {
-  const { noteId } = req.params;
-  const note = await Note.findById(noteId);
-  if (!note) {
-    return res.status(404).json({ message: 'Note not found' });
-  }
-  res.status(200).json(note);
-});
+router.get('/notes', getAllNotes);
+router.get('/notes/:noteId', getNoteById);
+router.post('/notes', createNote);
+router.patch('/notes/:noteId', updateNote);
+router.delete('/notes/:noteId', deleteNote);
 
 export default router;
