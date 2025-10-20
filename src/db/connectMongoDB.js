@@ -3,7 +3,7 @@ import mongoose from 'mongoose';
 
 export const connectMongoDB = async () => {
   try {
-    const mongoUrl = process.env.MONGODB_URL;
+    const mongoUrl = process.env.MONGO_URL;
 
     if (!mongoUrl) {
       throw new Error('❌ MONGODB_URL is missing in .env file');

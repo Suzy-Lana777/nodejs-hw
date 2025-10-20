@@ -4,6 +4,7 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import 'dotenv/config';
+import { errors as celebrateErrors } from 'celebrate';
 
 import { connectMongoDB } from './db/connectMongoDB.js';
 import { logger } from './middleware/logger.js';
@@ -23,11 +24,16 @@ app.use(helmet());
 // підключаємо маршрути нотаток
 app.use(notesRoutes);
 
-// 404 і 500
+// обробка 404
 app.use(notFoundHandler);
+
+// обробка помилок від celebrate (валідація)
+app.use(celebrateErrors());
+
+// глобальна обробка інших помилок (500 тощо)
 app.use(errorHandler);
 
-// підключення до MongoDB і старт
+// підключення до MongoDB і старт сервера
 await connectMongoDB();
 
 app.listen(PORT, () => {
