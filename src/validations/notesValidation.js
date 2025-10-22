@@ -1,31 +1,15 @@
 // src/validations/notesValidation.js
 import { Joi, Segments } from 'celebrate';
 import { isValidObjectId } from 'mongoose';
-import tags from '../contacts/tags.js';
+import { TAGS } from '../constants/tags.js';
 
-/**
- * Спільний кастом-валідатор для ObjectId
- */
-const objectIdJoi = Joi.string()
-  .custom((value, helpers) => {
-    if (!isValidObjectId(value)) {
-      return helpers.error('any.invalid');
-    }
-    return value;
-  }, 'Mongo ObjectId validation')
-  .messages({
-    'any.invalid': 'Invalid id format. Must be a valid MongoDB ObjectId',
-    'string.base': 'Id must be a string',
-    'any.required': 'Id is required',
-  });
+const objectIdValidator = (value, helpers) => {
+  return !isValidObjectId(value) ? helpers.message('Invalid id format') : value;
+};
 
-/**
- * GET /notes — перевірка query
- *  - page: int >=1, default 1
- *  - perPage: int 5..20, default 10
- *  - tag: один із значень з src/contacts/tags.js
- *  - search: string, може бути порожнім
- */
+// Дозволені поля сортування для нотаток
+const SORT_FIELDS = ['_id', 'title', 'tag', 'createdAt', 'updatedAt'];
+
 export const getAllNotesSchema = {
   [Segments.QUERY]: Joi.object({
     page: Joi.number().integer().min(1).default(1).messages({
@@ -40,33 +24,35 @@ export const getAllNotesSchema = {
       'number.integer': 'perPage must be an integer',
     }),
     tag: Joi.string()
-      .valid(...tags)
+      .valid(...TAGS)
       .messages({
-        'any.only': `tag must be one of: ${tags.join(', ')}`,
+        'any.only': `tag must be one of: ${TAGS.join(', ')}`,
         'string.base': 'tag must be a string',
       }),
-    search: Joi.string().allow('').messages({
+    search: Joi.string().trim().allow('').messages({
       'string.base': 'search must be a string',
+    }),
+    // 🔽 нове: сортування
+    sortBy: Joi.string()
+      .valid(...SORT_FIELDS)
+      .default('updatedAt')
+      .messages({
+        'any.only': `sortBy must be one of: ${SORT_FIELDS.join(', ')}`,
+        'string.base': 'sortBy must be a string',
+      }),
+    sortOrder: Joi.string().valid('asc', 'desc').default('desc').messages({
+      'any.only': 'sortOrder must be "asc" or "desc"',
+      'string.base': 'sortOrder must be a string',
     }),
   }),
 };
 
-/**
- * GET /notes/:noteId та DELETE /notes/:noteId — перевірка params
- *  - noteId: валідний ObjectId
- */
 export const noteIdSchema = {
   [Segments.PARAMS]: Joi.object({
-    noteId: objectIdJoi.required(),
+    noteId: Joi.string().custom(objectIdValidator).required(),
   }),
 };
 
-/**
- * POST /notes — перевірка body
- *  - title: string, min 1, required
- *  - content: string, дозволено порожній рядок
- *  - tag: один із значень із src/contacts/tags.js, required
- */
 export const createNoteSchema = {
   [Segments.BODY]: Joi.object({
     title: Joi.string().min(1).required().messages({
@@ -78,25 +64,19 @@ export const createNoteSchema = {
       'string.base': 'content must be a string',
     }),
     tag: Joi.string()
-      .valid(...tags)
+      .valid(...TAGS)
       .required()
       .messages({
-        'any.only': `tag must be one of: ${tags.join(', ')}`,
+        'any.only': `tag must be one of: ${TAGS.join(', ')}`,
         'any.required': 'tag is required',
         'string.base': 'tag must be a string',
       }),
   }),
 };
 
-/**
- * PATCH /notes/:noteId — перевірка params + body
- *  - params.noteId: валідний ObjectId
- *  - body: title/content/tag — усі необов’язкові,
- *          але якщо присутні — мають пройти валідацію
- */
 export const updateNoteSchema = {
   [Segments.PARAMS]: Joi.object({
-    noteId: objectIdJoi.required(),
+    noteId: Joi.string().custom(objectIdValidator).required(),
   }),
   [Segments.BODY]: Joi.object({
     title: Joi.string().min(1).messages({
@@ -107,9 +87,9 @@ export const updateNoteSchema = {
       'string.base': 'content must be a string',
     }),
     tag: Joi.string()
-      .valid(...tags)
+      .valid(...TAGS)
       .messages({
-        'any.only': `tag must be one of: ${tags.join(', ')}`,
+        'any.only': `tag must be one of: ${TAGS.join(', ')}`,
         'string.base': 'tag must be a string',
       }),
   })
