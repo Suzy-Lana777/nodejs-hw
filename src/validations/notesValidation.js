@@ -1,4 +1,4 @@
-// src/validations/notesValidation.js
+/// src/validations/notesValidation.js
 import { Joi, Segments } from 'celebrate';
 import { isValidObjectId } from 'mongoose';
 import { TAGS } from '../constants/tags.js';
@@ -6,9 +6,6 @@ import { TAGS } from '../constants/tags.js';
 const objectIdValidator = (value, helpers) => {
   return !isValidObjectId(value) ? helpers.message('Invalid id format') : value;
 };
-
-// Дозволені поля сортування для нотаток
-const SORT_FIELDS = ['_id', 'title', 'tag', 'createdAt', 'updatedAt'];
 
 export const getAllNotesSchema = {
   [Segments.QUERY]: Joi.object({
@@ -32,18 +29,6 @@ export const getAllNotesSchema = {
     search: Joi.string().trim().allow('').messages({
       'string.base': 'search must be a string',
     }),
-    // 🔽 нове: сортування
-    sortBy: Joi.string()
-      .valid(...SORT_FIELDS)
-      .default('updatedAt')
-      .messages({
-        'any.only': `sortBy must be one of: ${SORT_FIELDS.join(', ')}`,
-        'string.base': 'sortBy must be a string',
-      }),
-    sortOrder: Joi.string().valid('asc', 'desc').default('desc').messages({
-      'any.only': 'sortOrder must be "asc" or "desc"',
-      'string.base': 'sortOrder must be a string',
-    }),
   }),
 };
 
@@ -63,15 +48,14 @@ export const createNoteSchema = {
     content: Joi.string().allow('').messages({
       'string.base': 'content must be a string',
     }),
+
     tag: Joi.string()
       .valid(...TAGS)
-      .required()
       .messages({
         'any.only': `tag must be one of: ${TAGS.join(', ')}`,
-        'any.required': 'tag is required',
         'string.base': 'tag must be a string',
       }),
-  }),
+  }).required(),
 };
 
 export const updateNoteSchema = {
