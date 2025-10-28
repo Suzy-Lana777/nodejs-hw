@@ -1,40 +1,34 @@
-// src/models/user.js
+// src/models/note.js
 
-import { model, Schema } from 'mongoose';
+import { Schema, model } from 'mongoose';
 
-const userSchema = new Schema(
+const noteSchema = new Schema(
   {
-    username: {
+    title: {
       type: String,
-      trim: true,
-    },
-    email: {
-      type: String,
-      unique: true,
       required: true,
       trim: true,
     },
-    password: {
+    content: {
       type: String,
+      trim: true,
+    },
+    tag: {
+      type: String,
+      enum: ['work', 'study', 'personal', 'other'],
+      default: 'other',
+    },
+    // 🔹 нове поле, що пов’язує нотатку з користувачем
+    userId: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
       required: true,
-      minlength: 8, // Мінімальна довжина пароля за вимогами ДЗ
     },
   },
-  { timestamps: true, versionKey: false },
+  {
+    timestamps: true,
+    versionKey: false,
+  },
 );
 
-userSchema.pre('save', function (next) {
-  if (!this.username) {
-    this.username = this.email;
-  }
-  next();
-});
-
-// Перевизначаємо метод toJSON — прибираємо password з відповіді
-userSchema.methods.toJSON = function () {
-  const obj = this.toObject();
-  delete obj.password;
-  return obj;
-};
-
-export const User = model('User', userSchema);
+export const Note = model('Note', noteSchema);

@@ -8,96 +8,107 @@ import { createSession, setSessionCookies } from '../services/auth.js';
 
 // ---------- Register ----------
 export const registerUser = async (req, res, next) => {
-  const { email, password } = req.body;
+  try {
+    const { email, password } = req.body;
 
-  const existingUser = await User.findOne({ email });
-  if (existingUser) {
-    return next(createHttpError(400, 'Email in use'));
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return next(createHttpError(400, 'Email in use'));
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const newUser = await User.create({
+      email,
+      password: hashedPassword,
+    });
+
+    const newSession = await createSession(newUser._id);
+    setSessionCookies(res, newSession);
+
+    res.status(201).json(newUser); // пароль прибере toJSON
+  } catch (err) {
+    next(err);
   }
-
-  const hashedPassword = await bcrypt.hash(password, 10);
-
-  const newUser = await User.create({
-    email,
-    password: hashedPassword,
-  });
-
-  const newSession = await createSession(newUser._id);
-  setSessionCookies(res, newSession);
-
-  res.status(201).json(newUser);
 };
 
 // ---------- Login ----------
 export const loginUser = async (req, res, next) => {
-  const { email, password } = req.body;
+  try {
+    const { email, password } = req.body;
 
-  const user = await User.findOne({ email });
-  if (!user) {
-    return next(createHttpError(401, 'Invalid credentials'));
+    const user = await User.findOne({ email });
+    if (!user) {
+      return next(createHttpError(401, 'Invalid credentials'));
+    }
+
+    const isValidPassword = await bcrypt.compare(password, user.password);
+    if (!isValidPassword) {
+      return next(createHttpError(401, 'Invalid credentials'));
+    }
+
+    // видалити попередню сесію користувача (якщо є)
+    await Session.deleteOne({ userId: user._id });
+
+    // створити нову сесію та встановити кукі
+    const newSession = await createSession(user._id);
+    setSessionCookies(res, newSession);
+
+    res.status(200).json(user); // пароль прибере toJSON
+  } catch (err) {
+    next(err);
   }
-
-  const isValidPassword = await bcrypt.compare(password, user.password);
-  if (!isValidPassword) {
-    return next(createHttpError(401, 'Invalid credentials'));
-  }
-
-  await Session.deleteOne({ userId: user._id });
-
-  const newSession = await createSession(user._id);
-  setSessionCookies(res, newSession);
-
-  res.status(200).json(user);
 };
 
-// ---------- Refresh session (за зразком) ----------
+// ---------- Refresh session ----------
 export const refreshUserSession = async (req, res, next) => {
-  // 1) Знаходимо поточну сесію за id та refreshToken з cookies
-  const session = await Session.findOne({
-    _id: req.cookies.sessionId,
-    refreshToken: req.cookies.refreshToken,
-  });
+  try {
+    const { sessionId, refreshToken } = req.cookies;
 
-  // 2) Якщо немає такої сесії — 401
-  if (!session) {
-    return next(createHttpError(401, 'Session not found'));
+    // 1) знайти поточну сесію
+    const session = await Session.findOne({
+      _id: sessionId,
+      refreshToken,
+    });
+
+    if (!session) {
+      return next(createHttpError(401, 'Session not found'));
+    }
+
+    // 2) перевірити термін дії refresh токена
+    const isExpired = new Date() > new Date(session.refreshTokenValidUntil);
+    if (isExpired) {
+      return next(createHttpError(401, 'Session token expired'));
+    }
+
+    // 3) видалити стару сесію
+    await Session.deleteOne({ _id: session._id, refreshToken });
+
+    // 4) створити нову сесію та встановити нові кукі
+    const newSession = await createSession(session.userId);
+    setSessionCookies(res, newSession);
+
+    res.status(200).json({ message: 'Session refreshed' });
+  } catch (err) {
+    next(err);
   }
-
-  // 3) Перевіряємо термін дії refresh токена
-  const isSessionTokenExpired =
-    new Date() > new Date(session.refreshTokenValidUntil);
-
-  if (isSessionTokenExpired) {
-    return next(createHttpError(401, 'Session token expired'));
-  }
-
-  // 4) Видаляємо поточну сесію
-  await Session.deleteOne({
-    _id: req.cookies.sessionId,
-    refreshToken: req.cookies.refreshToken,
-  });
-
-  // 5) Створюємо нову і ставимо кукі
-  const newSession = await createSession(session.userId);
-  setSessionCookies(res, newSession);
-
-  res.status(200).json({ message: 'Session refreshed' });
 };
-
-// Для сумісності з існуючими імпортами/роутами:
-export const refreshSession = refreshUserSession;
 
 // ---------- Logout ----------
-export const logoutUser = async (req, res) => {
-  const { sessionId } = req.cookies;
+export const logoutUser = async (req, res, next) => {
+  try {
+    const { sessionId } = req.cookies;
 
-  if (sessionId) {
-    await Session.deleteOne({ _id: sessionId });
+    if (sessionId) {
+      await Session.deleteOne({ _id: sessionId });
+    }
+
+    res.clearCookie('sessionId');
+    res.clearCookie('accessToken');
+    res.clearCookie('refreshToken');
+
+    res.status(204).send();
+  } catch (err) {
+    next(err);
   }
-
-  res.clearCookie('sessionId');
-  res.clearCookie('accessToken');
-  res.clearCookie('refreshToken');
-
-  res.status(204).send();
 };

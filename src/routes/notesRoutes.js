@@ -18,7 +18,13 @@ import {
   updateNoteSchema,
 } from '../validations/notesValidation.js';
 
+// ✅ middleware аутентифікації
+import { authenticate } from '../middlewares/authenticate.js';
+
 const router = Router();
+
+// ✅ застосовуємо до всіх шляхів, що починаються з /notes
+router.use('/notes', authenticate);
 
 // GET /notes?page=&perPage=&tag=&search=
 router.get('/notes', celebrate(getAllNotesSchema), getAllNotes);

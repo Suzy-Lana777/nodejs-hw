@@ -5,6 +5,7 @@ import { celebrate } from 'celebrate';
 import {
   loginUser,
   logoutUser,
+  refreshUserSession,
   registerUser,
 } from '../controllers/authController.js';
 import {
@@ -14,9 +15,16 @@ import {
 
 const router = Router();
 
+// 1. Реєстрація користувача
 router.post('/auth/register', celebrate(registerUserSchema), registerUser);
+
+// 2. Логін користувача
 router.post('/auth/login', celebrate(loginUserSchema), loginUser);
-// Новий роут
+
+// 3. Вихід користувача
 router.post('/auth/logout', logoutUser);
+
+// 4. Оновлення сесії користувача
+router.post('/auth/refresh', refreshUserSession);
 
 export default router;
