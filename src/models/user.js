@@ -1,34 +1,23 @@
-// src/models/note.js
+import { model, Schema } from 'mongoose';
 
-import { Schema, model } from 'mongoose';
-
-const noteSchema = new Schema(
+const userSchema = new Schema(
   {
-    title: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-    content: {
-      type: String,
-      trim: true,
-    },
-    tag: {
-      type: String,
-      enum: ['work', 'study', 'personal', 'other'],
-      default: 'other',
-    },
-    // 🔹 нове поле, що пов’язує нотатку з користувачем
-    userId: {
-      type: Schema.Types.ObjectId,
-      ref: 'User',
-      required: true,
-    },
+    username: { type: String, trim: true },
+    email: { type: String, unique: true, required: true, trim: true },
+    password: { type: String, required: true, minlength: 8 },
   },
-  {
-    timestamps: true,
-    versionKey: false,
-  },
+  { timestamps: true, versionKey: false },
 );
 
-export const Note = model('Note', noteSchema);
+userSchema.pre('save', function (next) {
+  if (!this.username) this.username = this.email;
+  next();
+});
+
+userSchema.methods.toJSON = function () {
+  const obj = this.toObject();
+  delete obj.password;
+  return obj;
+};
+
+export const User = model('User', userSchema);
