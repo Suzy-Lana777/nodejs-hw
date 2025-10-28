@@ -1,32 +1,34 @@
-// src/controllers/authController.js
+// src/validations/authValidation.js
 
-import bcrypt from 'bcrypt';
-import createHttpError from 'http-errors';
-import { User } from '../models/user.js';
+import { Joi, Segments } from 'celebrate';
 
-export const loginUser = async (req, res, next) => {
-  const { email, password } = req.body;
-
-  const user = await User.findOne({ email });
-  if (!user) {
-    return next(createHttpError(401, 'Invalid credentials'));
-  }
-
-  const isPasswordValid = await bcrypt.compare(password, user.password);
-  if (!isPasswordValid) {
-    return next(createHttpError(401, 'Invalid credentials'));
-  }
-
-  res.status(200).json(user);
+// Схема для реєстрації користувача
+export const registerUserSchema = {
+  [Segments.BODY]: Joi.object({
+    email: Joi.string().email().required().messages({
+      'string.base': 'Email must be a string',
+      'string.email': 'Email must be a valid email address',
+      'any.required': 'Email is required',
+    }),
+    password: Joi.string().min(8).required().messages({
+      'string.base': 'Password must be a string',
+      'string.min': 'Password should have at least {#limit} characters',
+      'any.required': 'Password is required',
+    }),
+  }),
 };
 
-// 🔹 Заглушка для /auth/refresh — щоб сервер не падав.
-// Потім додаси: читання cookies, перевірку refreshToken, createSession, setSessionCookies тощо.
-export const refreshSession = async (req, res, next) => {
-  try {
-    // TODO: витягти sessionId і refreshToken з cookies, перевірити, оновити сесію
-    res.status(200).json({});
-  } catch (err) {
-    next(err);
-  }
+// Схема для логіну користувача
+export const loginUserSchema = {
+  [Segments.BODY]: Joi.object({
+    email: Joi.string().email().required().messages({
+      'string.base': 'Email must be a string',
+      'string.email': 'Email must be a valid email address',
+      'any.required': 'Email is required',
+    }),
+    password: Joi.string().required().messages({
+      'string.base': 'Password must be a string',
+      'any.required': 'Password is required',
+    }),
+  }),
 };

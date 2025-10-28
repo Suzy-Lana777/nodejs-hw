@@ -7,7 +7,7 @@ const sessionSchema = new Schema(
     userId: {
       type: Schema.Types.ObjectId,
       ref: 'User',
-      required: true, // обов’язкове посилання на користувача
+      required: true, // посилання на користувача
     },
     accessToken: {
       type: String,
@@ -27,8 +27,8 @@ const sessionSchema = new Schema(
     },
   },
   {
-    timestamps: true, // автоматично створює createdAt і updatedAt
-    versionKey: false, // вимикає __v
+    timestamps: true,
+    versionKey: false,
   },
 );
 
