@@ -2,9 +2,16 @@
 
 import bcrypt from 'bcrypt';
 import createHttpError from 'http-errors';
+import jwt from 'jsonwebtoken';
+import { sendEmail } from '../utils/sendMail.js';
 import { User } from '../models/user.js';
 import { Session } from '../models/session.js';
 import { createSession, setSessionCookies } from '../services/auth.js';
+
+// ДОДАНО по зразку:
+import handlebars from 'handlebars';
+import path from 'node:path';
+import fs from 'node:fs/promises';
 
 // ---------- Register ----------
 export const registerUser = async (req, res, next) => {
@@ -111,4 +118,87 @@ export const logoutUser = async (req, res, next) => {
   } catch (err) {
     next(err);
   }
+};
+
+// ---------- Request password reset email ----------
+export const requestResetEmail = async (req, res, next) => {
+  const { email } = req.body;
+
+  const user = await User.findOne({ email });
+  if (!user) {
+    // ✅ за вимогами ДЗ — однакове повідомлення
+    return res.status(200).json({
+      message: 'Password reset email sent successfully',
+    });
+  }
+
+  const resetToken = jwt.sign(
+    { sub: user._id, email },
+    process.env.JWT_SECRET,
+    { expiresIn: '15m' },
+  );
+
+  // 1. Формуємо шлях до шаблона
+  const templatePath = path.resolve('src/templates/reset-password-email.html');
+  // 2. Читаємо шаблон
+  const templateSource = await fs.readFile(templatePath, 'utf-8');
+  // 3. Готуємо шаблон до заповнення
+  const template = handlebars.compile(templateSource);
+  // 4. Підставляємо дані
+  const html = template({
+    name: user.username,
+    link: `${process.env.FRONTEND_DOMAIN}/reset-password?token=${resetToken}`,
+  });
+
+  try {
+    await sendEmail({
+      from: process.env.SMTP_FROM,
+      to: email,
+      subject: 'Reset your password',
+      html, // 5. Передаємо HTML у лист
+    });
+  } catch {
+    next(
+      createHttpError(500, 'Failed to send the email, please try again later.'),
+    );
+    return;
+  }
+
+  // ✅ за вимогами ДЗ — однакове повідомлення
+  res.status(200).json({
+    message: 'Password reset email sent successfully',
+  });
+};
+
+// ---------- Reset password ----------
+export const resetPassword = async (req, res, next) => {
+  const { token, password } = req.body;
+
+  // 1. Перевіряємо/декодуємо токен
+  let payload;
+  try {
+    payload = jwt.verify(token, process.env.JWT_SECRET);
+  } catch {
+    next(createHttpError(401, 'Invalid or expired token'));
+    return;
+  }
+
+  // 2. Шукаємо користувача
+  const user = await User.findOne({ _id: payload.sub, email: payload.email });
+  if (!user) {
+    next(createHttpError(404, 'User not found'));
+    return;
+  }
+
+  // 3. Якщо користувач існує — створюємо новий пароль і оновлюємо користувача
+  const hashedPassword = await bcrypt.hash(password, 10);
+  await User.updateOne({ _id: user._id }, { password: hashedPassword });
+
+  // 4. Інвалідовуємо всі можливі попередні сесії користувача
+  await Session.deleteMany({ userId: user._id });
+
+  // 5. Повертаємо успішну відповідь (✅ точний текст за ДЗ)
+  res.status(200).json({
+    message: 'Password reset successfully',
+  });
 };

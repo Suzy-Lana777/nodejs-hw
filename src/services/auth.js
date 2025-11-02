@@ -17,26 +17,28 @@ export const createSession = async (userId) => {
   });
 };
 
-// додаємо другу функцію
+// ✅ встановлення куків для авторизації
 export const setSessionCookies = (res, session) => {
+  const isProd = process.env.NODE_ENV === 'production'; // визначаємо середовище
+
   res.cookie('accessToken', session.accessToken, {
     httpOnly: true,
-    secure: true,
-    sameSite: 'none',
+    secure: isProd, // у dev (localhost) буде false, у проді — true
+    sameSite: isProd ? 'none' : 'lax', // lax дозволяє куки на localhost
     maxAge: FIFTEEN_MINUTES,
   });
 
   res.cookie('refreshToken', session.refreshToken, {
     httpOnly: true,
-    secure: true,
-    sameSite: 'none',
+    secure: isProd,
+    sameSite: isProd ? 'none' : 'lax',
     maxAge: ONE_DAY,
   });
 
   res.cookie('sessionId', session._id, {
     httpOnly: true,
-    secure: true,
-    sameSite: 'none',
+    secure: isProd,
+    sameSite: isProd ? 'none' : 'lax',
     maxAge: ONE_DAY,
   });
 };

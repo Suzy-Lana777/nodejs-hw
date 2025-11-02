@@ -2,6 +2,7 @@
 import { Note } from '../models/note.js';
 import createHttpError from 'http-errors';
 
+// GET /notes — з фільтрацією, пошуком, пагінацією
 export const getAllNotes = async (req, res, next) => {
   try {
     const {
@@ -18,7 +19,7 @@ export const getAllNotes = async (req, res, next) => {
     const skip = (pageNum - 1) * perPageNum;
     const sortDirection = sortOrder === 'asc' ? 1 : -1;
 
-    // фільтр: обовʼязково за поточним користувачем
+    // Фільтр тільки для поточного користувача
     const filter = { userId: req.user._id };
 
     if (tag) {
@@ -30,10 +31,10 @@ export const getAllNotes = async (req, res, next) => {
       filter.$text = { $search: search.trim() };
     }
 
-    // Базовий запит з однаковим filter для списку
+    // Базовий запит
     let notesQuery = Note.find(filter);
 
-    // Сортування: за score якщо є $text, інакше — звичайне
+    // Якщо є пошук — додаємо score для сортування, інакше — стандартне сортування
     if (hasSearch) {
       notesQuery = notesQuery
         .select({ score: { $meta: 'textScore' } })
@@ -45,7 +46,7 @@ export const getAllNotes = async (req, res, next) => {
     // Пагінація + lean
     notesQuery = notesQuery.skip(skip).limit(perPageNum).lean();
 
-    // Паралельно рахуємо і тягнемо список за ТИМ САМИМ фільтром
+    // Паралельне отримання даних і підрахунок
     const [totalNotes, notes] = await Promise.all([
       Note.countDocuments(filter),
       notesQuery,
@@ -53,19 +54,22 @@ export const getAllNotes = async (req, res, next) => {
 
     const totalPages = Math.max(1, Math.ceil(totalNotes / perPageNum));
 
+    // 🔻 Видаляємо поле score з кожної нотатки (якщо воно є)
+    const cleanedNotes = notes.map(({ score, ...rest }) => rest);
+
     res.status(200).json({
       page: pageNum,
       perPage: perPageNum,
       totalNotes,
       totalPages,
-      notes,
+      notes: cleanedNotes,
     });
   } catch (error) {
     next(error);
   }
 };
 
-// GET /notes/:noteId — тільки власна нотатка
+// GET /notes/:noteId — отримати одну нотатку
 export const getNoteById = async (req, res, next) => {
   try {
     const { noteId } = req.params;
@@ -85,7 +89,7 @@ export const getNoteById = async (req, res, next) => {
   }
 };
 
-// POST /notes — створити нотатку, підставивши userId
+// POST /notes — створити нову нотатку
 export const createNote = async (req, res, next) => {
   try {
     const note = await Note.create({
@@ -99,7 +103,7 @@ export const createNote = async (req, res, next) => {
   }
 };
 
-// PATCH /notes/:noteId — оновити ТІЛЬКИ свою нотатку
+// PATCH /notes/:noteId — оновити свою нотатку
 export const updateNote = async (req, res, next) => {
   try {
     const { noteId } = req.params;
@@ -120,7 +124,7 @@ export const updateNote = async (req, res, next) => {
   }
 };
 
-// DELETE /notes/:noteId — видалити ТІЛЬКИ свою нотатку
+// DELETE /notes/:noteId — видалити свою нотатку
 export const deleteNote = async (req, res, next) => {
   try {
     const { noteId } = req.params;
