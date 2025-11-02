@@ -3,7 +3,7 @@
 import bcrypt from 'bcrypt';
 import createHttpError from 'http-errors';
 import jwt from 'jsonwebtoken';
-import { sendEmail } from '../utils/sendMail.js';
+import { sendMail } from '../utils/sendMail.js';
 import { User } from '../models/user.js';
 import { Session } from '../models/session.js';
 import { createSession, setSessionCookies } from '../services/auth.js';
@@ -144,28 +144,44 @@ export const requestResetEmail = async (req, res, next) => {
   const templateSource = await fs.readFile(templatePath, 'utf-8');
   // 3. Готуємо шаблон до заповнення
   const template = handlebars.compile(templateSource);
-  // 4. Підставляємо дані
+  // 4. Підставляємо дані (імʼя або email як fallback)
   const html = template({
-    name: user.username,
+    name: user.username ?? user.email,
     link: `${process.env.FRONTEND_DOMAIN}/reset-password?token=${resetToken}`,
   });
 
-  try {
-    await sendEmail({
-      from: process.env.SMTP_FROM,
-      to: email,
-      subject: 'Reset your password',
-      html, // 5. Передаємо HTML у лист
-    });
-  } catch {
-    next(
-      createHttpError(500, 'Failed to send the email, please try again later.'),
+  // ✅ Resend: sendMail повертає { data, error }
+  const { error } = await sendMail({
+    from: process.env.RESEND_FROM || process.env.SMTP_FROM, // гнучко
+    to: email,
+    subject: 'Reset your password',
+    html,
+  });
+
+  if (error) {
+    // контрольовано піднімаємо HTTP-помилку
+    throw createHttpError(
+      error.statusCode || 500,
+      error.message || 'Failed to send the email, please try again later.',
     );
-    return;
   }
 
-  // ✅ за вимогами ДЗ — однакове повідомлення
-  res.status(200).json({
+  // (історичний SMTP-виклик залишаю закоментованим, як у тебе було)
+  // try {
+  //   await sendEmail({
+  //     from: process.env.SMTP_FROM,
+  //     to: email,
+  //     subject: 'Reset your password',
+  //     html, // 5. Передаємо HTML у лист
+  //   });
+  // } catch {
+  //   next(
+  //     createHttpError(500, 'Failed to send the email, please try again later.'),
+  //   );
+  //   return;
+  // }
+
+  return res.status(200).json({
     message: 'Password reset email sent successfully',
   });
 };
@@ -197,7 +213,7 @@ export const resetPassword = async (req, res, next) => {
   // 4. Інвалідовуємо всі можливі попередні сесії користувача
   await Session.deleteMany({ userId: user._id });
 
-  // 5. Повертаємо успішну відповідь (✅ точний текст за ДЗ)
+  // 5. Повертаємо успішну відповідь
   res.status(200).json({
     message: 'Password reset successfully',
   });
