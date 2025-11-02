@@ -126,7 +126,6 @@ export const requestResetEmail = async (req, res, next) => {
 
   const user = await User.findOne({ email });
   if (!user) {
-    // ✅ за вимогами ДЗ — однакове повідомлення
     return res.status(200).json({
       message: 'Password reset email sent successfully',
     });
@@ -152,7 +151,7 @@ export const requestResetEmail = async (req, res, next) => {
 
   // ✅ Resend: sendMail повертає { data, error }
   const { error } = await sendMail({
-    from: process.env.RESEND_FROM || process.env.SMTP_FROM, // гнучко
+    from: process.env.RESEND_FROM || 'NoteHub <onboarding@resend.dev>', // гнучко
     to: email,
     subject: 'Reset your password',
     html,

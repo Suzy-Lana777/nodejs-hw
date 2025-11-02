@@ -1,27 +1,40 @@
-// import nodemailer from 'nodemailer';
-
+// src/utils/sendMail.js
 import { Resend } from 'resend';
 
+// Ініціалізація Resend з API-ключем із .env
 const resend = new Resend(process.env.RESEND_API_KEY);
 
+/**
+ * Надсилання листів через Resend API
+ * @param {Object} options
+ * @param {string} options.to - адреса отримувача
+ * @param {string} options.subject - тема листа
+ * @param {string} options.html - HTML-вміст листа
+ */
 export const sendMail = async (options) => {
-  return resend.emails.send({
-    from: process.env.RESEND_FROM,
+  const from = process.env.RESEND_FROM || 'NoteHub <onboarding@resend.dev>';
+
+  // Відправлення листа
+  const { data, error } = await resend.emails.send({
+    from,
     to: options.to,
     subject: options.subject,
     html: options.html,
   });
+
+  // Повертаємо результат у тому форматі, який використовує контролер
+  return { data, error };
 };
 
-// const transporter = nodemailer.createTransport({
-//   host: process.env.SMTP_HOST,
-//   port: process.env.SMTP_PORT,
-//   auth: {
-//     user: process.env.SMTP_USER,
-//     pass: process.env.SMTP_PASSWORD,
-//   },
-// });
+// import { Resend } from 'resend';
 
-// export const sendEmail = async (options) => {
-//   return await transporter.sendMail(options);
+// const resend = new Resend(process.env.RESEND_API_KEY);
+
+// export const sendMail = async (options) => {
+//   return resend.emails.send({
+//     from: process.env.RESEND_FROM,
+//     to: options.to,
+//     subject: options.subject,
+//     html: options.html,
+//   });
 // };
