@@ -1,5 +1,3 @@
-// src/routes/authRoutes.js
-
 import { Router } from 'express';
 import { celebrate } from 'celebrate';
 import {
@@ -7,10 +5,14 @@ import {
   logoutUser,
   refreshUserSession,
   registerUser,
+  requestResetEmail,
+  resetPassword,
 } from '../controllers/authController.js';
 import {
   loginUserSchema,
   registerUserSchema,
+  requestResetEmailSchema,
+  resetPasswordSchema,
 } from '../validations/authValidation.js';
 
 const router = Router();
@@ -26,5 +28,19 @@ router.post('/auth/logout', logoutUser);
 
 // 4. Оновлення сесії користувача
 router.post('/auth/refresh', refreshUserSession);
+
+// 5. Запит на скидання пароля (надсилання email)
+router.post(
+  '/auth/request-reset-email',
+  celebrate(requestResetEmailSchema),
+  requestResetEmail,
+);
+
+// 6. Скидання пароля (встановлення нового)
+router.post(
+  '/auth/reset-password',
+  celebrate(resetPasswordSchema),
+  resetPassword,
+);
 
 export default router;
